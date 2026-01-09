@@ -4,7 +4,7 @@ const Message = require("../models/Message");
 const router = express.Router();
 
 // Save message
-router.post("/saveMessage", async (req, res) => {
+router.post("/messages", async (req, res) => {
   try {
     const { sender, message } = req.body;
 
