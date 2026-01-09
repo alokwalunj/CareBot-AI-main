@@ -1,0 +1,163 @@
+{
+  "identity": {
+    "name": "E1: The Anti-AI Designer",
+    "mission": "Create a healthcare interface that balances clinical authority with radical human empathy. Avoid the 'sterile hospital' look; aim for 'high-end wellness clinic'.",
+    "principles": [
+      "Fusion: Clinical Precision + Organic Warmth",
+      "Emotion: Calm, Safe, Trustworthy",
+      "Content: Clear, jargon-free, conversational",
+      "Visuals: High-contrast typography, soft shadows, generous whitespace"
+    ]
+  },
+  "typography": {
+    "fonts": {
+      "heading": {
+        "family": "Manrope, sans-serif",
+        "weights": ["600", "700", "800"],
+        "usage": "Use for all section headers, modal titles, and hero text. Tight tracking (-0.02em)."
+      },
+      "body": {
+        "family": "Public Sans, sans-serif",
+        "weights": ["400", "500"],
+        "usage": "Use for all paragraphs, inputs, and chat messages. Relaxed leading (1.6)."
+      },
+      "mono": {
+        "family": "JetBrains Mono, monospace",
+        "usage": "Use ONLY for medical codes (ICD-10), reference numbers, or dosage data."
+      }
+    },
+    "scale": {
+      "h1": "text-4xl md:text-6xl font-bold tracking-tight",
+      "h2": "text-3xl md:text-4xl font-semibold tracking-tight",
+      "h3": "text-2xl font-semibold",
+      "body-lg": "text-lg leading-relaxed",
+      "body-base": "text-base leading-relaxed text-muted-foreground",
+      "caption": "text-sm font-medium text-muted-foreground uppercase tracking-wider"
+    }
+  },
+  "colors": {
+    "palette_name": "Clinical Zen",
+    "description": "A sophisticated blend of deep teal (authority) and soft sage (calm), punctuated by warm coral (humanity).",
+    "css_variables": {
+      "root": {
+        "--background": "210 40% 98%",
+        "--foreground": "222 47% 11%",
+        "--card": "0 0% 100%",
+        "--card-foreground": "222 47% 11%",
+        "--popover": "0 0% 100%",
+        "--popover-foreground": "222 47% 11%",
+        "--primary": "175 84% 32%",
+        "--primary-foreground": "210 40% 98%",
+        "--secondary": "160 84% 95%",
+        "--secondary-foreground": "175 84% 32%",
+        "--muted": "210 40% 96.1%",
+        "--muted-foreground": "215.4 16.3% 46.9%",
+        "--accent": "160 84% 95%",
+        "--accent-foreground": "175 84% 32%",
+        "--destructive": "0 84.2% 60.2%",
+        "--destructive-foreground": "210 40% 98%",
+        "--border": "214.3 31.8% 91.4%",
+        "--input": "214.3 31.8% 91.4%",
+        "--ring": "175 84% 32%",
+        "--radius": "0.75rem"
+      },
+      "dark": {
+        "--background": "222 47% 11%",
+        "--foreground": "210 40% 98%",
+        "--card": "222 47% 11%",
+        "--card-foreground": "210 40% 98%",
+        "--popover": "222 47% 11%",
+        "--popover-foreground": "210 40% 98%",
+        "--primary": "175 84% 32%",
+        "--primary-foreground": "210 40% 98%",
+        "--secondary": "217.2 32.6% 17.5%",
+        "--secondary-foreground": "210 40% 98%",
+        "--muted": "217.2 32.6% 17.5%",
+        "--muted-foreground": "215 20.2% 65.1%",
+        "--accent": "217.2 32.6% 17.5%",
+        "--accent-foreground": "210 40% 98%",
+        "--destructive": "0 62.8% 30.6%",
+        "--destructive-foreground": "210 40% 98%",
+        "--border": "217.2 32.6% 17.5%",
+        "--input": "217.2 32.6% 17.5%",
+        "--ring": "175 84% 32%"
+      }
+    }
+  },
+  "layout": {
+    "spacing_strategy": "Generous. Use p-8 or p-12 for containers. Avoid cramped interfaces.",
+    "grid_system": {
+      "marketing": "Bento Grid (Mode A). Asymmetric layouts for features.",
+      "dashboard": "Control Room (Mode B). Dense but soft. Use 'gap-6'.",
+      "chat": "Floating Island. The chat container should float in the center with max-width-2xl."
+    },
+    "border_radius": {
+      "outer": "rounded-3xl",
+      "inner": "rounded-xl",
+      "buttons": "rounded-full"
+    }
+  },
+  "components": {
+    "buttons": {
+      "style": "Pill-shaped (rounded-full).",
+      "primary": "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg hover:shadow-xl transition-all duration-300",
+      "secondary": "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+    },
+    "cards": {
+      "style": "Clean, white, soft shadow. No heavy borders.",
+      "classes": "bg-card text-card-foreground rounded-2xl shadow-sm border border-border/50 hover:shadow-md transition-all"
+    },
+    "inputs": {
+      "style": "Tall, comfortable touch targets.",
+      "classes": "h-12 rounded-xl border-border/80 focus:ring-2 focus:ring-primary/20 bg-background"
+    },
+    "chat_bubbles": {
+      "user": "bg-primary text-primary-foreground rounded-2xl rounded-tr-sm",
+      "ai": "bg-secondary text-secondary-foreground rounded-2xl rounded-tl-sm"
+    }
+  },
+  "visual_enhancers": {
+    "glassmorphism": {
+      "usage": "Use for sticky headers and floating action buttons.",
+      "classes": "bg-white/80 dark:bg-black/80 backdrop-blur-xl border-b border-white/20"
+    },
+    "gradients": {
+      "usage": "Subtle background blobs only. NO text gradients.",
+      "classes": "bg-gradient-to-br from-teal-50 to-slate-50 dark:from-slate-950 dark:to-slate-900"
+    },
+    "shadows": {
+      "usage": "Soft, diffuse shadows. Avoid harsh black shadows.",
+      "classes": "shadow-[0_8px_30px_rgb(0,0,0,0.04)]"
+    }
+  },
+  "media": {
+    "image_urls": {
+      "hero_doctor": "https://images.pexels.com/photos/5215017/pexels-photo-5215017.jpeg",
+      "consultation": "https://images.pexels.com/photos/8376277/pexels-photo-8376277.jpeg",
+      "lab_abstract": "https://images.pexels.com/photos/7723394/pexels-photo-7723394.jpeg",
+      "microscope": "https://images.pexels.com/photos/7723383/pexels-photo-7723383.jpeg"
+    },
+    "icons": {
+      "library": "lucide-react",
+      "style": "Stroke width 1.5px (Light/Elegant).",
+      "usage": "Use for navigation, features, and status indicators."
+    }
+  },
+  "instructions_to_main_agent": [
+    "1. UPDATE CSS VARIABLES: Copy the 'css_variables' section into /app/frontend/src/index.css immediately.",
+    "2. INSTALL FONTS: Add Manrope and Public Sans via Google Fonts import in index.css.",
+    "3. LANDING PAGE: Build a 'Trust-First' landing page. Hero section must use the 'hero_doctor' image with a soft gradient overlay.",
+    "4. CHAT INTERFACE: This is the core. It must feel like a premium messaging app (like iMessage or WhatsApp) but cleaner. Use the 'chat_bubbles' styles defined above.",
+    "5. DASHBOARD: Use the 'Control Room' grid. Show 'Upcoming Appointments', 'Recent Symptoms', and 'Health Score' as key widgets.",
+    "6. AUTH PAGES: Keep them simple. Split screen: Left side form, Right side 'lab_abstract' image.",
+    "7. DATA-TESTID: Add data-testid to ALL interactive elements (buttons, inputs, cards)."
+  ],
+  "universal_guidelines": [
+    "Do not use generic centered layouts.",
+    "Create depth through layered design elements.",
+    "Use glass-morphism effects with backdrop filters.",
+    "Every interaction needs micro-animations.",
+    "Use 2-3x more spacing than feels comfortable.",
+    "NEVER use AI assistant Emoji characters."
+  ]
+}
