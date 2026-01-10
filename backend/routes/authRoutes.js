@@ -1,16 +1,16 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const TestUser = require("../models/TestUser");
+const User = require("../models/User");
 
 const router = express.Router();
 
-/**
- * REGISTER USER
- * POST /api/auth/register
- */
 router.post("/register", async (req, res) => {
   try {
+    if (!req.body) {
+      return res.status(400).json({ message: "Request body is missing" });
+    }
+
     const { fullName, email, password, age, conditions } = req.body;
 
     if (!fullName || !email || !password) {
@@ -29,7 +29,9 @@ router.post("/register", async (req, res) => {
       email,
       password: hashedPassword,
       age,
-      conditions: conditions ? conditions.split(",") : [],
+      conditions: typeof conditions === "string"
+        ? conditions.split(",").map(s => s.trim()).filter(Boolean)
+        : []
     });
 
     const token = jwt.sign(
@@ -40,16 +42,13 @@ router.post("/register", async (req, res) => {
 
     res.status(201).json({
       success: true,
+      message: "User registered successfully",
       token,
-      user: {
-        id: user._id,
-        fullName: user.fullName,
-        email: user.email,
-      },
+      user: { id: user._id, fullName: user.fullName, email: user.email }
     });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server error" });
+    console.error("REGISTER ERROR:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 });
 
