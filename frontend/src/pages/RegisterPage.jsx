@@ -3,7 +3,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 import { Heart, Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { authAPI } from "../lib/api";
@@ -12,19 +18,20 @@ import { useAuth } from "../App";
 const RegisterPage = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
+
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     full_name: "",
     email: "",
     password: "",
     age: "",
-    existing_conditions: ""
+    existing_conditions: "",
   });
 
   const handleChange = (e) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     }));
   };
 
@@ -33,20 +40,28 @@ const RegisterPage = () => {
     setLoading(true);
 
     try {
+      // ✅ Match backend expected keys:
+      // fullName, email, password, age (optional), conditions (string)
       const payload = {
-        ...formData,
-        age: formData.age ? parseInt(formData.age) : null,
-        existing_conditions: formData.existing_conditions
-          ? formData.existing_conditions.split(",").map(c => c.trim()).filter(Boolean)
-          : []
+        fullName: formData.full_name.trim(),
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password,
+        age: formData.age ? parseInt(formData.age, 10) : undefined,
+        conditions: formData.existing_conditions || "",
       };
 
       const response = await authAPI.register(payload);
-      login(response.data.user, response.data.access_token);
+
+      // ✅ Backend returns `token` (not `access_token`)
+      login(response.data.user, response.data.token);
+
       toast.success("Welcome to CareBot!");
       navigate("/dashboard");
     } catch (error) {
-      toast.error(error.response?.data?.detail || "Registration failed. Please try again.");
+      // ✅ Backend returns `message` (not `detail`)
+      toast.error(
+        error?.response?.data?.message || "Registration failed. Please try again."
+      );
     } finally {
       setLoading(false);
     }
@@ -56,7 +71,10 @@ const RegisterPage = () => {
     <div className="min-h-screen grid lg:grid-cols-2">
       {/* Form Side */}
       <div className="flex flex-col justify-center px-8 py-12 lg:px-16">
-        <Link to="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 w-fit">
+        <Link
+          to="/"
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 w-fit"
+        >
           <ArrowLeft className="w-4 h-4" />
           Back to home
         </Link>
@@ -76,6 +94,7 @@ const RegisterPage = () => {
                 Start your health journey with CareBot today
               </CardDescription>
             </CardHeader>
+
             <CardContent className="px-0">
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="space-y-2">
@@ -143,7 +162,9 @@ const RegisterPage = () => {
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="existing_conditions">Existing Conditions (optional)</Label>
+                  <Label htmlFor="existing_conditions">
+                    Existing Conditions (optional)
+                  </Label>
                   <Input
                     id="existing_conditions"
                     name="existing_conditions"
@@ -154,11 +175,13 @@ const RegisterPage = () => {
                     className="h-12 rounded-xl"
                     data-testid="register-conditions-input"
                   />
-                  <p className="text-xs text-muted-foreground">Separate multiple conditions with commas</p>
+                  <p className="text-xs text-muted-foreground">
+                    Separate multiple conditions with commas
+                  </p>
                 </div>
 
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   className="w-full h-12 rounded-full text-base mt-2"
                   disabled={loading}
                   data-testid="register-submit-btn"
@@ -176,7 +199,11 @@ const RegisterPage = () => {
 
               <p className="text-center text-sm text-muted-foreground mt-6">
                 Already have an account?{" "}
-                <Link to="/login" className="text-primary font-medium hover:underline" data-testid="register-login-link">
+                <Link
+                  to="/login"
+                  className="text-primary font-medium hover:underline"
+                  data-testid="register-login-link"
+                >
                   Sign in
                 </Link>
               </p>
@@ -195,7 +222,8 @@ const RegisterPage = () => {
         <div className="absolute inset-0 bg-gradient-to-t from-primary/40 to-transparent"></div>
         <div className="absolute bottom-12 left-12 right-12 text-white">
           <p className="text-2xl font-semibold leading-relaxed">
-            "Finally, a healthcare assistant that actually listens and helps me make informed decisions."
+            "Finally, a healthcare assistant that actually listens and helps me
+            make informed decisions."
           </p>
           <p className="mt-4 text-white/80">— Michael K., Patient</p>
         </div>
