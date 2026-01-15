@@ -2,8 +2,7 @@ import axios from "axios";
 
 /**
  * Backend base URL
- * Put this in frontend/.env:
- * VITE_API_URL=https://carebot-ai-main-1.onrender.com
+ * Vercel Env Var: VITE_API_URL=https://carebot-ai-main-1.onrender.com
  */
 const BACKEND_URL =
   (import.meta.env.VITE_API_URL || "").replace(/\/$/, "") ||
@@ -15,11 +14,13 @@ const BACKEND_URL =
 const API_BASE = `${BACKEND_URL}/api`;
 
 /**
- * Axios instance
+ * Create axios instance
  */
 const api = axios.create({
   baseURL: API_BASE,
-  headers: { "Content-Type": "application/json" },
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
 /**
@@ -32,7 +33,7 @@ api.interceptors.request.use((config) => {
 });
 
 /**
- * Handle auth-related errors (Node backend returns { message })
+ * Handle auth errors (Node backend returns { message })
  */
 api.interceptors.response.use(
   (response) => response,
@@ -40,7 +41,10 @@ api.interceptors.response.use(
     const status = error?.response?.status;
     const msg = (error?.response?.data?.message || "").toLowerCase();
 
-    if (status === 401 && (msg.includes("token") || msg.includes("expired") || msg.includes("invalid"))) {
+    if (
+      status === 401 &&
+      (msg.includes("token") || msg.includes("expired") || msg.includes("invalid"))
+    ) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
 
@@ -57,23 +61,63 @@ api.interceptors.response.use(
 );
 
 /**
- * Auth API (matches your Node backend)
- * POST /api/auth/register -> returns { token, user }
- * POST /api/auth/login    -> returns { token, user }
+ * Auth API
  */
 export const authAPI = {
   register: (data) => api.post("/auth/register", data),
   login: (data) => api.post("/auth/login", data),
+  // keep if your UI calls it; otherwise remove later
+  getMe: () => api.get("/auth/me"),
 };
 
 /**
- * Chat API (matches your Node backend)
- * POST /api/chat/messages
- * GET  /api/chat/messages
+ * Chat API (match your backend routes)
+ * server.js mounts: /api/chat
  */
 export const chatAPI = {
+  // If your backend routes are: router.post("/messages") and router.get("/messages")
   saveMessage: (data) => api.post("/chat/messages", data),
   getMessages: () => api.get("/chat/messages"),
+
+  // Backward compatibility in case some pages call older endpoints
+  sendMessage: (data) => api.post("/chat/messages", data),
+};
+
+/**
+ * Doctors API (keep exports so build doesn't break)
+ * If backend not implemented yet, these will 404 when called — that's OK for build.
+ */
+export const doctorsAPI = {
+  getAll: () => api.get("/doctors"),
+  getById: (id) => api.get(`/doctors/${id}`),
+};
+
+/**
+ * Appointments API (needed by Dashboard import)
+ * If backend not implemented yet, it may 404 when called — OK for now.
+ */
+export const appointmentsAPI = {
+  create: (data) => api.post("/appointments", data),
+  getAll: () => api.get("/appointments"),
+  cancel: (id) => api.patch(`/appointments/${id}/cancel`),
+};
+
+/**
+ * Voice API (keep exports so build doesn't break)
+ */
+export const voiceAPI = {
+  speechToText: (audioBlob) => {
+    const formData = new FormData();
+    formData.append("audio_file", audioBlob, "recording.webm");
+
+    return api.post("/voice/speech-to-text", formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    });
+  },
+
+  textToSpeech: (text, voice = "nova") => api.post("/voice/text-to-speech", { text, voice }),
+
+  getVoices: () => api.get("/voice/voices"),
 };
 
 export default api;
