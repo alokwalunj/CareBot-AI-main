@@ -25,7 +25,7 @@ const RegisterPage = () => {
     email: "",
     password: "",
     age: "",
-    existing_conditions: "",
+    existing_conditions: "", // keep as string in UI
   });
 
   const handleChange = (e) => {
@@ -40,28 +40,38 @@ const RegisterPage = () => {
     setLoading(true);
 
     try {
-      // ✅ Match backend expected keys:
-      // fullName, email, password, age (optional), conditions (string)
+      // ✅ SAFE: ensure we never call split on undefined
+      const conditionsStr = (formData.existing_conditions ?? "").toString();
+
+      // ✅ Map UI fields -> backend fields
       const payload = {
         fullName: formData.full_name.trim(),
         email: formData.email.trim().toLowerCase(),
         password: formData.password,
-        age: formData.age ? parseInt(formData.age, 10) : undefined,
-        conditions: formData.existing_conditions || "",
+        age: formData.age ? Number(formData.age) : null,
+        conditions: conditionsStr
+          ? conditionsStr
+              .split(",")
+              .map((c) => c.trim())
+              .filter(Boolean)
+          : [],
       };
 
       const response = await authAPI.register(payload);
 
-      // ✅ Backend returns `token` (not `access_token`)
-      login(response.data.user, response.data.token);
+      // ✅ backend returns token (not access_token)
+      const token = response.data.token;
+      const user = response.data.user;
 
+      login(user, token);
       toast.success("Welcome to CareBot!");
       navigate("/dashboard");
     } catch (error) {
-      // ✅ Backend returns `message` (not `detail`)
-      toast.error(
-        error?.response?.data?.message || "Registration failed. Please try again."
-      );
+      const msg =
+        error?.response?.data?.message ||
+        error?.response?.data?.error ||
+        "Registration failed. Please try again.";
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -108,7 +118,6 @@ const RegisterPage = () => {
                     onChange={handleChange}
                     required
                     className="h-12 rounded-xl"
-                    data-testid="register-name-input"
                   />
                 </div>
 
@@ -123,7 +132,6 @@ const RegisterPage = () => {
                     onChange={handleChange}
                     required
                     className="h-12 rounded-xl"
-                    data-testid="register-email-input"
                   />
                 </div>
 
@@ -139,7 +147,6 @@ const RegisterPage = () => {
                     required
                     minLength={6}
                     className="h-12 rounded-xl"
-                    data-testid="register-password-input"
                   />
                 </div>
 
@@ -156,7 +163,6 @@ const RegisterPage = () => {
                       min={1}
                       max={120}
                       className="h-12 rounded-xl"
-                      data-testid="register-age-input"
                     />
                   </div>
                 </div>
@@ -173,7 +179,6 @@ const RegisterPage = () => {
                     value={formData.existing_conditions}
                     onChange={handleChange}
                     className="h-12 rounded-xl"
-                    data-testid="register-conditions-input"
                   />
                   <p className="text-xs text-muted-foreground">
                     Separate multiple conditions with commas
@@ -184,7 +189,6 @@ const RegisterPage = () => {
                   type="submit"
                   className="w-full h-12 rounded-full text-base mt-2"
                   disabled={loading}
-                  data-testid="register-submit-btn"
                 >
                   {loading ? (
                     <>
@@ -202,7 +206,6 @@ const RegisterPage = () => {
                 <Link
                   to="/login"
                   className="text-primary font-medium hover:underline"
-                  data-testid="register-login-link"
                 >
                   Sign in
                 </Link>
