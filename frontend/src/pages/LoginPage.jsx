@@ -3,7 +3,13 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
 import { Heart, Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 import { authAPI } from "../lib/api";
@@ -12,16 +18,17 @@ import { useAuth } from "../App";
 const LoginPage = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
+
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: "",
-    password: ""
+    password: "",
   });
 
   const handleChange = (e) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     }));
   };
 
@@ -30,12 +37,21 @@ const LoginPage = () => {
     setLoading(true);
 
     try {
-      const response = await authAPI.login(formData);
-      login(response.data.user, response.data.access_token);
+      const payload = {
+        email: formData.email.trim().toLowerCase(),
+        password: formData.password,
+      };
+
+      const response = await authAPI.login(payload);
+
+      // ✅ backend returns token (not access_token)
+      login(response.data.user, response.data.token);
+
       toast.success("Welcome back!");
       navigate("/dashboard");
     } catch (error) {
-      toast.error(error.response?.data?.detail || "Invalid email or password");
+      // ✅ backend returns message (not detail)
+      toast.error(error?.response?.data?.message || "Invalid email or password");
     } finally {
       setLoading(false);
     }
@@ -45,7 +61,10 @@ const LoginPage = () => {
     <div className="min-h-screen grid lg:grid-cols-2">
       {/* Form Side */}
       <div className="flex flex-col justify-center px-8 py-12 lg:px-16">
-        <Link to="/" className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-12 w-fit">
+        <Link
+          to="/"
+          className="flex items-center gap-2 text-muted-foreground hover:text-foreground mb-12 w-fit"
+        >
           <ArrowLeft className="w-4 h-4" />
           Back to home
         </Link>
@@ -65,6 +84,7 @@ const LoginPage = () => {
                 Sign in to continue your health journey
               </CardDescription>
             </CardHeader>
+
             <CardContent className="px-0">
               <form onSubmit={handleSubmit} className="space-y-5">
                 <div className="space-y-2">
@@ -97,8 +117,8 @@ const LoginPage = () => {
                   />
                 </div>
 
-                <Button 
-                  type="submit" 
+                <Button
+                  type="submit"
                   className="w-full h-12 rounded-full text-base"
                   disabled={loading}
                   data-testid="login-submit-btn"
@@ -116,7 +136,11 @@ const LoginPage = () => {
 
               <p className="text-center text-sm text-muted-foreground mt-6">
                 Don't have an account?{" "}
-                <Link to="/register" className="text-primary font-medium hover:underline" data-testid="login-register-link">
+                <Link
+                  to="/register"
+                  className="text-primary font-medium hover:underline"
+                  data-testid="login-register-link"
+                >
                   Create one
                 </Link>
               </p>
@@ -135,7 +159,8 @@ const LoginPage = () => {
         <div className="absolute inset-0 bg-gradient-to-t from-primary/40 to-transparent"></div>
         <div className="absolute bottom-12 left-12 right-12 text-white">
           <p className="text-2xl font-semibold leading-relaxed">
-            "CareBot helped me understand my symptoms and connected me with the right specialist quickly."
+            "CareBot helped me understand my symptoms and connected me with the
+            right specialist quickly."
           </p>
           <p className="mt-4 text-white/80">— Sarah M., Patient</p>
         </div>
