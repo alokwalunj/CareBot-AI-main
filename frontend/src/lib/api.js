@@ -2,7 +2,8 @@ import axios from "axios";
 
 /**
  * Backend base URL
- * Vercel Env Var example: VITE_API_URL=https://carebot-ai-main-1.onrender.com
+ * Vercel Env Var example:
+ * VITE_API_URL=https://carebot-ai-main-1.onrender.com
  */
 const BACKEND_URL =
   (import.meta.env.VITE_API_URL || "").replace(/\/$/, "") ||
@@ -13,9 +14,14 @@ const BACKEND_URL =
  */
 const API_BASE = `${BACKEND_URL}/api`;
 
+/**
+ * Axios instance
+ */
 const api = axios.create({
   baseURL: API_BASE,
-  headers: { "Content-Type": "application/json" },
+  headers: {
+    "Content-Type": "application/json",
+  },
 });
 
 /**
@@ -23,10 +29,17 @@ const api = axios.create({
  */
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
-  if (token) config.headers.Authorization = `Bearer ${token}`;
+
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+
   return config;
 });
 
+/**
+ * Global response handler (auth errors)
+ */
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -35,7 +48,9 @@ api.interceptors.response.use(
 
     if (
       status === 401 &&
-      (msg.includes("token") || msg.includes("expired") || msg.includes("invalid"))
+      (msg.includes("token") ||
+        msg.includes("expired") ||
+        msg.includes("invalid"))
     ) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
@@ -47,6 +62,7 @@ api.interceptors.response.use(
         window.location.href = "/login";
       }
     }
+
     return Promise.reject(error);
   }
 );
@@ -61,42 +77,52 @@ export const authAPI = {
 };
 
 /**
- * Chat API (MATCHES YOUR BACKEND)
+ * Chat API
  * server.js mounts: /api/chat
- * chatRoutes.js defines: POST /messages, GET /messages
+ * chatRoutes.js defines:
+ * POST /messages
+ * GET /messages
  */
 export const chatAPI = {
   sendMessage: (data) => api.post("/chat/messages", data),
-  getSessions: () => api.get("/chat/sessions"),
-  getSessionMessages: (sessionId) => api.get(`/chat/sessions/${sessionId}/messages`),
-  deleteSession: (sessionId) => api.delete(`/chat/sessions/${sessionId}`),
+  getMessages: () => api.get("/chat/messages"),
 };
 
-
 /**
- * Keep these exports so your build doesn't break.
- * If backend isn't implemented, they will 404 ONLY when those pages call them.
+ * Doctors API
  */
 export const doctorsAPI = {
   getAll: () => api.get("/doctors"),
   getById: (id) => api.get(`/doctors/${id}`),
 };
 
+/**
+ * Appointments API
+ */
 export const appointmentsAPI = {
   create: (data) => api.post("/appointments", data),
   getAll: () => api.get("/appointments"),
   cancel: (id) => api.patch(`/appointments/${id}/cancel`),
 };
 
+/**
+ * Voice API
+ */
 export const voiceAPI = {
   speechToText: (audioBlob) => {
     const formData = new FormData();
     formData.append("audio_file", audioBlob, "recording.webm");
+
     return api.post("/voice/speech-to-text", formData, {
-      headers: { "Content-Type": "multipart/form-data" },
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
     });
   },
-  textToSpeech: (text, voice = "nova") => api.post("/voice/text-to-speech", { text, voice }),
+
+  textToSpeech: (text, voice = "nova") =>
+    api.post("/voice/text-to-speech", { text, voice }),
+
   getVoices: () => api.get("/voice/voices"),
 };
 
