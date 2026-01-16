@@ -2,7 +2,7 @@ import axios from "axios";
 
 /**
  * Backend base URL
- * Vercel Env Var: VITE_API_URL=https://carebot-ai-main-1.onrender.com
+ * Vercel Env Var example: VITE_API_URL=https://carebot-ai-main-1.onrender.com
  */
 const BACKEND_URL =
   (import.meta.env.VITE_API_URL || "").replace(/\/$/, "") ||
@@ -13,14 +13,9 @@ const BACKEND_URL =
  */
 const API_BASE = `${BACKEND_URL}/api`;
 
-/**
- * Create axios instance
- */
 const api = axios.create({
   baseURL: API_BASE,
-  headers: {
-    "Content-Type": "application/json",
-  },
+  headers: { "Content-Type": "application/json" },
 });
 
 /**
@@ -32,9 +27,6 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-/**
- * Handle auth errors (Node backend returns { message })
- */
 api.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -55,7 +47,6 @@ api.interceptors.response.use(
         window.location.href = "/login";
       }
     }
-
     return Promise.reject(error);
   }
 );
@@ -66,62 +57,43 @@ api.interceptors.response.use(
 export const authAPI = {
   register: (data) => api.post("/auth/register", data),
   login: (data) => api.post("/auth/login", data),
-  // keep if your UI calls it; otherwise remove later
   getMe: () => api.get("/auth/me"),
 };
 
 /**
- * Chat API (match your backend routes)
+ * Chat API (MATCHES YOUR BACKEND)
  * server.js mounts: /api/chat
+ * chatRoutes.js defines: POST /messages, GET /messages
  */
-
 export const chatAPI = {
-  // ✅ correct endpoint
   sendMessage: (data) => api.post("/chat/messages", data),
-
-  // ✅ keep for older code that still calls saveMessage
-  saveMessage: (data) => api.post("/chat/messages", data),
-
-  // ✅ list messages
   getMessages: () => api.get("/chat/messages"),
 };
 
-
-
 /**
- * Doctors API (keep exports so build doesn't break)
- * If backend not implemented yet, these will 404 when called — that's OK for build.
+ * Keep these exports so your build doesn't break.
+ * If backend isn't implemented, they will 404 ONLY when those pages call them.
  */
 export const doctorsAPI = {
   getAll: () => api.get("/doctors"),
   getById: (id) => api.get(`/doctors/${id}`),
 };
 
-/**
- * Appointments API (needed by Dashboard import)
- * If backend not implemented yet, it may 404 when called — OK for now.
- */
 export const appointmentsAPI = {
   create: (data) => api.post("/appointments", data),
   getAll: () => api.get("/appointments"),
   cancel: (id) => api.patch(`/appointments/${id}/cancel`),
 };
 
-/**
- * Voice API (keep exports so build doesn't break)
- */
 export const voiceAPI = {
   speechToText: (audioBlob) => {
     const formData = new FormData();
     formData.append("audio_file", audioBlob, "recording.webm");
-
     return api.post("/voice/speech-to-text", formData, {
       headers: { "Content-Type": "multipart/form-data" },
     });
   },
-
   textToSpeech: (text, voice = "nova") => api.post("/voice/text-to-speech", { text, voice }),
-
   getVoices: () => api.get("/voice/voices"),
 };
 

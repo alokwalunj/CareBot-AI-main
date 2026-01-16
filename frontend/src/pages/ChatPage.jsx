@@ -3,21 +3,8 @@ import Navbar from "../components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
-import {
-  Send,
-  MessageCircle,
-  Loader2,
-  Mic,
-  MicOff,
-  Volume2,
-  Square,
-} from "lucide-react";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Send, MessageCircle, Loader2, Mic, MicOff, Volume2, Square } from "lucide-react";
 import { chatAPI, voiceAPI } from "@/lib/api";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -39,19 +26,17 @@ const ChatPage = () => {
   const audioChunksRef = useRef([]);
   const audioRef = useRef(null);
 
-  // Fetch all messages from backend
   const fetchMessages = async () => {
     setLoadingMessages(true);
     try {
       const res = await chatAPI.getMessages();
       const data = Array.isArray(res.data) ? res.data : [];
 
-      // Map backend schema { sender, message, createdAt } -> UI schema
       const mapped = data.map((m) => ({
         id: m._id || m.id,
-        role: m.sender === "user" ? "user" : "assistant",
-        content: m.message || "",
-        timestamp: m.createdAt || m.timestamp || new Date().toISOString(),
+        role: m.role,              // ✅ user / assistant
+        content: m.content,        // ✅ content
+        timestamp: m.createdAt || new Date().toISOString(),
       }));
 
       setMessages(mapped);
@@ -67,12 +52,11 @@ const ChatPage = () => {
     fetchMessages();
   }, []);
 
-  // Scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  // Voice recording functions
+  // Voice recording
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
@@ -177,31 +161,37 @@ const ChatPage = () => {
     e.preventDefault();
     if (!input.trim() || loading) return;
 
-    const userMessage = input.trim();
+    const userText = input.trim();
     setInput("");
     setLoading(true);
 
+    // Optimistic message
     const tempUserMsg = {
       id: `temp-${Date.now()}`,
       role: "user",
-      content: userMessage,
+      content: userText,
       timestamp: new Date().toISOString(),
     };
     setMessages((prev) => [...prev, tempUserMsg]);
 
     try {
-      // ✅ IMPORTANT: backend expects { message } (your updated route)
-      await chatAPI.sendMessage({ message: userMessage });
+      // ✅ This hits POST /api/chat/messages
+      const res = await chatAPI.sendMessage({
+        message: userText,
+        session_id: "default",
+      });
 
-      // refresh DB messages so UI matches Mongo
-      await fetchMessages();
+      // res.data is assistant message object
+      setMessages((prev) => [
+        ...prev.slice(0, -1),
+        { ...tempUserMsg, id: `user-${Date.now()}` },
+        res.data,
+      ]);
     } catch (error) {
       console.error("Send error:", error);
-      toast.error(
-        error?.response?.data?.message || "Failed to send message. Please try again."
-      );
+      toast.error(error?.response?.data?.message || "Failed to send message.");
       setMessages((prev) => prev.filter((m) => m.id !== tempUserMsg.id));
-      setInput(userMessage);
+      setInput(userText);
     } finally {
       setLoading(false);
     }
@@ -226,22 +216,18 @@ const ChatPage = () => {
                   </div>
                   <h2 className="text-xl font-semibold mb-2">How can I help you today?</h2>
                   <p className="text-muted-foreground max-w-md mx-auto">
-                    Describe your symptoms and I’ll store them securely.
+                    Describe your symptoms or health concerns, and I'll respond.
                   </p>
                 </div>
               ) : (
                 messages.map((message, index) => (
                   <div
                     key={message.id || index}
-                    className={`flex ${
-                      message.role === "user" ? "justify-end" : "justify-start"
-                    }`}
+                    className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} animate-message-in`}
                   >
                     <div
                       className={`max-w-[85%] ${
-                        message.role === "user"
-                          ? "chat-bubble-user"
-                          : "chat-bubble-assistant"
+                        message.role === "user" ? "chat-bubble-user" : "chat-bubble-assistant"
                       } chat-bubble`}
                     >
                       <div className="prose prose-sm max-w-none">
@@ -283,6 +269,16 @@ const ChatPage = () => {
                 ))
               )}
 
+              {loading && (
+                <div className="flex justify-start">
+                  <div className="chat-bubble chat-bubble-assistant flex items-center gap-2">
+                    <span className="typing-dot w-2 h-2 bg-current rounded-full opacity-60"></span>
+                    <span className="typing-dot w-2 h-2 bg-current rounded-full opacity-60"></span>
+                    <span className="typing-dot w-2 h-2 bg-current rounded-full opacity-60"></span>
+                  </div>
+                </div>
+              )}
+
               <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
@@ -297,9 +293,7 @@ const ChatPage = () => {
                         type="button"
                         variant={isRecording ? "destructive" : "outline"}
                         size="icon"
-                        className={`h-12 w-12 rounded-full flex-shrink-0 ${
-                          isRecording ? "animate-pulse" : ""
-                        }`}
+                        className={`h-12 w-12 rounded-full flex-shrink-0 ${isRecording ? "animate-pulse" : ""}`}
                         onClick={toggleRecording}
                         disabled={loading || isTranscribing}
                       >
@@ -313,11 +307,7 @@ const ChatPage = () => {
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      {isTranscribing
-                        ? "Transcribing..."
-                        : isRecording
-                        ? "Stop recording"
-                        : "Start voice input"}
+                      {isTranscribing ? "Transcribing..." : isRecording ? "Stop recording" : "Start voice input"}
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -325,9 +315,7 @@ const ChatPage = () => {
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder={
-                    isRecording ? "Recording... Tap mic to stop" : "Describe your symptoms..."
-                  }
+                  placeholder={isRecording ? "Recording... Tap mic to stop" : "Describe your symptoms..."}
                   className="flex-1 h-12 rounded-full px-5"
                   disabled={loading || isRecording}
                 />
@@ -338,13 +326,16 @@ const ChatPage = () => {
                   className="h-12 w-12 rounded-full"
                   disabled={loading || !input.trim() || isRecording}
                 >
-                  {loading ? (
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                  ) : (
-                    <Send className="w-5 h-5" />
-                  )}
+                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                 </Button>
               </div>
+
+              {isRecording && (
+                <div className="flex items-center justify-center gap-2 mt-3 text-destructive text-sm">
+                  <span className="w-2 h-2 bg-destructive rounded-full animate-pulse"></span>
+                  Recording... Tap microphone to stop
+                </div>
+              )}
 
               <p className="text-xs text-muted-foreground text-center mt-3">
                 CareBot provides guidance only. Always consult a healthcare professional for medical advice.
