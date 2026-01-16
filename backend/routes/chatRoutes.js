@@ -8,7 +8,7 @@ const router = express.Router();
 
 // OpenAI client (keep key ONLY in Render env: OPENAI_API_KEY)
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,s
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 const SYSTEM_PROMPT =
