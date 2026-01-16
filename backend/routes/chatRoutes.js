@@ -4,54 +4,40 @@ const Message = require("../models/Message");
 
 const router = express.Router();
 
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY, // keep key ONLY in Render env vars
 });
 
+const SYSTEM_PROMPT =
+  "You are CareBot, a medical assistant. Provide safe, non-diagnostic health guidance. " +
+  "Never claim certainty or provide a diagnosis. Encourage consulting a licensed healthcare professional. " +
+  "If symptoms sound urgent (chest pain, trouble breathing, severe bleeding, stroke signs), advise emergency services.";
+
+//
+// POST /api/chat/messages
+//
 router.post("/messages", async (req, res) => {
   try {
-    const { message, session_id } = req.body;
+    const { message } = req.body;
 
     if (!message || !message.trim()) {
       return res.status(400).json({ message: "Message is required" });
     }
 
-    if (!process.env.OPENAI_API_KEY) {
-      return res.status(500).json({
-        message: "Server misconfigured: OPENAI_API_KEY is missing in environment variables",
-      });
-    }
-
-    const sid = session_id || "default";
-
-    // 1) Save USER message
+    // Save USER message
     await Message.create({
       role: "user",
       content: message.trim(),
-      session_id: sid,
+      session_id: "default",
     });
 
-    // 2) Build short history for context (last 12 messages)
-    const history = await Message.find({ session_id: sid })
-      .sort({ createdAt: 1 })
-      .limit(12);
-
-    const chatMessages = [
-      {
-        role: "system",
-        content:
-          "You are CareBot, a medical information assistant. Provide general guidance only, ask clarifying questions, and encourage seeing a clinician for diagnosis. Do not claim to diagnose. If emergency symptoms are mentioned, advise seeking emergency care.",
-      },
-      ...history.map((m) => ({
-        role: m.role,
-        content: m.content,
-      })),
-    ];
-
-    // 3) Call OpenAI
-    const completion = await client.chat.completions.create({
+    // Call OpenAI
+    const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      messages: chatMessages,
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: message.trim() },
+      ],
       temperature: 0.4,
     });
 
@@ -59,14 +45,13 @@ router.post("/messages", async (req, res) => {
       completion.choices?.[0]?.message?.content?.trim() ||
       "Sorry — I couldn't generate a response.";
 
-    // 4) Save ASSISTANT message
+    // Save ASSISTANT message
     const assistantMessage = await Message.create({
       role: "assistant",
       content: assistantReply,
-      session_id: sid,
+      session_id: "default",
     });
 
-    // 5) Return what the frontend expects
     return res.status(200).json({
       id: assistantMessage._id.toString(),
       role: "assistant",
@@ -74,30 +59,24 @@ router.post("/messages", async (req, res) => {
       timestamp: assistantMessage.createdAt,
       severity: "mild",
       suggestions: [],
-      session_id: sid,
+      session_id: "default",
     });
-  } catch (err) {
-    // Log full error in Render logs
-    console.error("Chat route error:", err);
-
-    // Send readable error to frontend (no secrets)
-    const status = err?.status || err?.response?.status || 500;
-    const msg =
-      err?.message ||
-      err?.response?.data?.error?.message ||
-      "Server error";
-
-    return res.status(status).json({ message: msg });
+  } catch (error) {
+    console.error("Chat error:", error);
+    return res.status(500).json({ message: "Server error" });
   }
 });
 
+//
+// GET /api/chat/messages
+//
 router.get("/messages", async (req, res) => {
   try {
-    const session_id = req.query.session_id || "default";
-    const messages = await Message.find({ session_id }).sort({ createdAt: 1 });
-    res.json(messages);
+    const messages = await Message.find({ session_id: "default" }).sort({ createdAt: 1 });
+    return res.json(messages);
   } catch (error) {
-    res.status(500).json({ message: "Failed to fetch messages" });
+    console.error("Fetch messages error:", error);
+    return res.status(500).json({ message: "Failed to fetch messages" });
   }
 });
 

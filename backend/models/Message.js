@@ -11,10 +11,10 @@ const messageSchema = new mongoose.Schema(
       type: String,
       required: true,
     },
+    // SIMPLE session handling (single conversation)
     session_id: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "ChatSession",
-      required: true,
+      type: String,
+      default: "default",
     },
   },
   { timestamps: true }
