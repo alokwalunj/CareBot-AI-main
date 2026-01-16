@@ -5,74 +5,49 @@ const Message = require("../models/Message");
 
 const router = express.Router();
 
-
-// OpenAI client (keep key ONLY in Render env: OPENAI_API_KEY)
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
 const SYSTEM_PROMPT =
   "You are CareBot, a medical assistant. You provide safe, non-diagnostic health guidance. " +
-  "You must never claim certainty or provide a diagnosis. " +
-  "Encourage consulting a licensed healthcare professional when appropriate. " +
-  "If symptoms sound urgent (e.g., chest pain, trouble breathing, severe bleeding, stroke signs), advise seeking emergency care.";
+  "You must never give a diagnosis or claim certainty. Encourage consulting a licensed healthcare professional when appropriate. " +
+  "If emergency symptoms are mentioned (chest pain, trouble breathing, severe bleeding, stroke signs, suicidal intent), advise immediate emergency help.";
 
 /**
  * GET /api/chat/sessions
- * Sidebar list
+ * List sessions (latest first)
  */
 router.get("/sessions", async (req, res) => {
   try {
-    const sessions = await ChatSession.find().sort({ last_message_at: -1 }).lean();
+    const sessions = await ChatSession.find()
+      .sort({ updatedAt: -1 })
+      .limit(50);
 
     res.json(
       sessions.map((s) => ({
         id: s._id.toString(),
         title: s.title,
-        last_message_at: s.last_message_at,
+        last_message_at: s.updatedAt,
+        created_at: s.createdAt,
       }))
     );
-  } catch (error) {
-    console.error("Sessions list error:", error);
-    res.status(500).json({ message: "Failed to load sessions" });
-  }
-});
-
-/**
- * POST /api/chat/sessions
- * Create a new empty session (optional; frontend can also rely on auto-create in /messages)
- */
-router.post("/sessions", async (req, res) => {
-  try {
-    const title = (req.body?.title || "New Chat").trim();
-
-    const session = await ChatSession.create({
-      title: title || "New Chat",
-      last_message_at: new Date(),
-    });
-
-    res.status(201).json({
-      id: session._id.toString(),
-      title: session.title,
-      last_message_at: session.last_message_at,
-    });
-  } catch (error) {
-    console.error("Create session error:", error);
-    res.status(500).json({ message: "Failed to create session" });
+  } catch (err) {
+    console.error("GET /sessions error:", err);
+    res.status(500).json({ message: "Failed to fetch sessions" });
   }
 });
 
 /**
  * GET /api/chat/sessions/:sessionId/messages
- * Load messages for a session
+ * Fetch messages for a session
  */
 router.get("/sessions/:sessionId/messages", async (req, res) => {
   try {
     const { sessionId } = req.params;
 
     const messages = await Message.find({ session_id: sessionId })
-      .sort({ createdAt: 1 })
-      .lean();
+      .sort({ createdAt: 1 });
 
     res.json(
       messages.map((m) => ({
@@ -80,28 +55,29 @@ router.get("/sessions/:sessionId/messages", async (req, res) => {
         role: m.role,
         content: m.content,
         timestamp: m.createdAt,
+        session_id: m.session_id,
       }))
     );
-  } catch (error) {
-    console.error("Fetch session messages error:", error);
-    res.status(500).json({ message: "Failed to fetch messages" });
+  } catch (err) {
+    console.error("GET /sessions/:id/messages error:", err);
+    res.status(500).json({ message: "Failed to fetch session messages" });
   }
 });
 
 /**
  * DELETE /api/chat/sessions/:sessionId
- * Delete a session + its messages
+ * Delete a session and its messages
  */
 router.delete("/sessions/:sessionId", async (req, res) => {
   try {
     const { sessionId } = req.params;
 
-    await ChatSession.deleteOne({ _id: sessionId });
     await Message.deleteMany({ session_id: sessionId });
+    await ChatSession.findByIdAndDelete(sessionId);
 
     res.json({ success: true });
-  } catch (error) {
-    console.error("Delete session error:", error);
+  } catch (err) {
+    console.error("DELETE /sessions/:id error:", err);
     res.status(500).json({ message: "Failed to delete session" });
   }
 });
@@ -109,72 +85,66 @@ router.delete("/sessions/:sessionId", async (req, res) => {
 /**
  * POST /api/chat/messages
  * Body: { message, session_id? }
- * If session_id is missing, auto-create a new session.
+ * If no session_id -> create a new session
+ * Saves user message + assistant reply
  */
 router.post("/messages", async (req, res) => {
   try {
     const { message, session_id } = req.body;
 
-    if (!message || !message.trim()) {
+    if (!message || !String(message).trim()) {
       return res.status(400).json({ message: "Message is required" });
     }
 
-    // 1) Ensure session exists (auto-create if missing)
-    let session = null;
+    let sessionId = session_id;
 
-    if (!session_id) {
-      const title = message.trim().slice(0, 40) || "New Chat";
-      session = await ChatSession.create({
-        title,
-        last_message_at: new Date(),
+    // Create session if missing
+    if (!sessionId) {
+      const title = String(message).trim().split(/\s+/).slice(0, 6).join(" ");
+      const newSession = await ChatSession.create({
+        title: title.length ? title : "New Chat",
       });
-    } else {
-      session = await ChatSession.findById(session_id);
-      if (!session) return res.status(404).json({ message: "Session not found" });
+      sessionId = newSession._id.toString();
     }
 
-    // 2) Save USER message
+    // Save USER message
     await Message.create({
       role: "user",
-      content: message,
-      session_id: session._id,
+      content: String(message).trim(),
+      session_id: sessionId,
     });
 
-    // 3) Build context from last N messages in this session (recommended)
-    const history = await Message.find({ session_id: session._id })
+    // Build conversation history (last 20 msgs for context)
+    const history = await Message.find({ session_id: sessionId })
       .sort({ createdAt: 1 })
-      .limit(20)
-      .lean();
+      .limit(20);
 
-    const messagesForOpenAI = [
+    const openaiMessages = [
       { role: "system", content: SYSTEM_PROMPT },
-      ...history.map((m) => ({ role: m.role, content: m.content })),
+      ...history.map((m) => ({
+        role: m.role,
+        content: m.content,
+      })),
     ];
 
-    // 4) Call OpenAI
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      messages: messagesForOpenAI,
+      messages: openaiMessages,
     });
 
     const assistantReply =
       completion.choices?.[0]?.message?.content?.trim() ||
-      "I'm sorry — I couldn't generate a response right now.";
+      "I'm sorry, I couldn't generate a response.";
 
-    // 5) Save ASSISTANT message
     const assistantMessage = await Message.create({
       role: "assistant",
       content: assistantReply,
-      session_id: session._id,
+      session_id: sessionId,
     });
 
-    // 6) Update session last activity (and keep title)
-    await ChatSession.updateOne(
-      { _id: session._id },
-      { $set: { last_message_at: new Date() } }
-    );
+    // Touch session updatedAt
+    await ChatSession.findByIdAndUpdate(sessionId, {}, { new: true });
 
-    // 7) Return what frontend expects
     return res.status(200).json({
       id: assistantMessage._id.toString(),
       role: "assistant",
@@ -182,18 +152,11 @@ router.post("/messages", async (req, res) => {
       timestamp: assistantMessage.createdAt,
       severity: "mild",
       suggestions: [],
-      session_id: session._id.toString(),
+      session_id: sessionId,
     });
-  } catch (error) {
-    console.error("Chat error:", error);
-
-    // Helpful OpenAI error forwarding (without leaking secrets)
-    const msg =
-      error?.message?.includes("insufficient_quota")
-        ? "OpenAI quota exceeded. Check billing/credits."
-        : "Server error";
-
-    res.status(500).json({ message: msg });
+  } catch (err) {
+    console.error("POST /messages error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 });
 

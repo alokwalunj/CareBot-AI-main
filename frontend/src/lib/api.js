@@ -67,12 +67,9 @@ export const authAPI = {
  */
 export const chatAPI = {
   sendMessage: (data) => api.post("/chat/messages", data),
-
   getSessions: () => api.get("/chat/sessions"),
-  createSession: (data) => api.post("/chat/sessions", data),
-  deleteSession: (id) => api.delete(`/chat/sessions/${id}`),
-
   getSessionMessages: (sessionId) => api.get(`/chat/sessions/${sessionId}/messages`),
+  deleteSession: (sessionId) => api.delete(`/chat/sessions/${sessionId}`),
 };
 
 
