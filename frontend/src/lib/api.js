@@ -74,14 +74,12 @@ export const authAPI = {
  * Chat API (match your backend routes)
  * server.js mounts: /api/chat
  */
-export const chatAPI = {
-  // If your backend routes are: router.post("/messages") and router.get("/messages")
-  saveMessage: (data) => api.post("/chat/messages", data),
-  getMessages: () => api.get("/chat/messages"),
 
-  // Backward compatibility in case some pages call older endpoints
-  sendMessage: (data) => api.post("/chat/messages", data),
+export const chatAPI = {
+  saveMessage: (data) => api.post("/chat/saveMessage", data),
+  getMessages: () => api.get("/chat/messages"),
 };
+
 
 /**
  * Doctors API (keep exports so build doesn't break)
