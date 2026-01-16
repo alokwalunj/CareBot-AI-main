@@ -1,6 +1,6 @@
 const express = require("express");
 const OpenAI = require("openai");
-const ChatSession = require("../models/ChatSession");
+const Section = require("../models/Section");
 const Message = require("../models/Message");
 
 const router = express.Router();
