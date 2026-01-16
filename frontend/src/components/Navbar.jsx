@@ -9,18 +9,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { 
-  Heart, 
-  LayoutDashboard, 
-  MessageCircle, 
-  Calendar, 
+import {
+  Heart,
+  LayoutDashboard,
+  MessageCircle,
+  Calendar,
   Users,
   LogOut,
   Menu,
-  X
+  X,
 } from "lucide-react";
 import { useAuth } from "@/App";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 
 const Navbar = () => {
   const { user, logout } = useAuth();
@@ -40,10 +40,17 @@ const Navbar = () => {
     navigate("/");
   };
 
+  // ✅ Support both possible name keys + never crash
+  const displayName = useMemo(() => {
+    return (user?.fullName || user?.full_name || "").toString().trim();
+  }, [user]);
+
   const getInitials = (name) => {
-    return name
-      .split(" ")
-      .map(n => n[0])
+    const safe = (name ?? "").toString().trim();
+    if (!safe) return "U";
+    return safe
+      .split(/\s+/)
+      .map((n) => n?.[0] || "")
       .join("")
       .toUpperCase()
       .slice(0, 2);
@@ -64,15 +71,16 @@ const Navbar = () => {
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-1">
             {navLinks.map((link) => {
-              const isActive = location.pathname === link.path || 
+              const isActive =
+                location.pathname === link.path ||
                 (link.path === "/chat" && location.pathname.startsWith("/chat"));
               return (
                 <Link
                   key={link.path}
                   to={link.path}
                   className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                    isActive 
-                      ? "bg-primary text-primary-foreground" 
+                    isActive
+                      ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:text-foreground hover:bg-accent"
                   }`}
                   data-testid={`navbar-${link.label.toLowerCase()}-link`}
@@ -91,7 +99,7 @@ const Navbar = () => {
                 <Button variant="ghost" className="relative h-9 w-9 rounded-full" data-testid="navbar-user-menu">
                   <Avatar className="h-9 w-9">
                     <AvatarFallback className="bg-primary text-primary-foreground text-sm">
-                      {user ? getInitials(user.full_name) : "U"}
+                      {getInitials(displayName)}
                     </AvatarFallback>
                   </Avatar>
                 </Button>
@@ -99,12 +107,16 @@ const Navbar = () => {
               <DropdownMenuContent className="w-56" align="end" forceMount>
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">{user?.full_name}</p>
-                    <p className="text-xs leading-none text-muted-foreground">{user?.email}</p>
+                    <p className="text-sm font-medium leading-none">{displayName || "User"}</p>
+                    <p className="text-xs leading-none text-muted-foreground">{user?.email || ""}</p>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer" data-testid="navbar-logout-btn">
+                <DropdownMenuItem
+                  onClick={handleLogout}
+                  className="text-destructive cursor-pointer"
+                  data-testid="navbar-logout-btn"
+                >
                   <LogOut className="mr-2 h-4 w-4" />
                   Log out
                 </DropdownMenuItem>
@@ -112,9 +124,9 @@ const Navbar = () => {
             </DropdownMenu>
 
             {/* Mobile Menu Button */}
-            <Button 
-              variant="ghost" 
-              size="icon" 
+            <Button
+              variant="ghost"
+              size="icon"
               className="md:hidden"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               data-testid="navbar-mobile-menu-btn"
@@ -129,7 +141,8 @@ const Navbar = () => {
           <div className="md:hidden py-4 border-t border-border/50">
             <div className="flex flex-col gap-2">
               {navLinks.map((link) => {
-                const isActive = location.pathname === link.path || 
+                const isActive =
+                  location.pathname === link.path ||
                   (link.path === "/chat" && location.pathname.startsWith("/chat"));
                 return (
                   <Link
@@ -137,8 +150,8 @@ const Navbar = () => {
                     to={link.path}
                     onClick={() => setMobileMenuOpen(false)}
                     className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-                      isActive 
-                        ? "bg-primary text-primary-foreground" 
+                      isActive
+                        ? "bg-primary text-primary-foreground"
                         : "text-muted-foreground hover:text-foreground hover:bg-accent"
                     }`}
                     data-testid={`navbar-mobile-${link.label.toLowerCase()}-link`}
