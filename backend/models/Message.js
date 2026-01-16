@@ -12,8 +12,9 @@ const messageSchema = new mongoose.Schema(
       required: true,
     },
     session_id: {
-      type: String,
-      default: null,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "ChatSession",
+      required: true,
     },
   },
   { timestamps: true }
