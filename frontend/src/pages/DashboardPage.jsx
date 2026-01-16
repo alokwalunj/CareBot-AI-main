@@ -1,18 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "@/components/Navbar";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { 
-  MessageCircle, 
-  Calendar, 
-  Clock, 
-  ArrowRight, 
+import {
+  MessageCircle,
+  Calendar,
+  Clock,
+  ArrowRight,
   Plus,
   Stethoscope,
   Activity,
-  AlertCircle
+  AlertCircle,
 } from "lucide-react";
 import { chatAPI, appointmentsAPI } from "@/lib/api";
 import { useAuth } from "@/App";
@@ -20,25 +20,54 @@ import { format } from "date-fns";
 
 const DashboardPage = () => {
   const { user } = useAuth();
+
   const [sessions, setSessions] = useState([]);
   const [appointments, setAppointments] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // ✅ Works with either `fullName` (backend) or `full_name` (old frontend)
+  const firstName = useMemo(() => {
+    const name = (user?.fullName || user?.full_name || "").toString().trim();
+    return name ? name.split(/\s+/)[0] : "there";
+  }, [user]);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [sessionsRes, appointmentsRes] = await Promise.all([
-          chatAPI.getSessions(),
-          appointmentsAPI.getAll()
+        // These endpoints might not exist yet in your backend.
+        // So we call them safely and fall back to empty arrays.
+        const results = await Promise.allSettled([
+          chatAPI.getSessions?.() ?? Promise.reject(new Error("getSessions not implemented")),
+          appointmentsAPI.getAll?.() ?? Promise.reject(new Error("appointments not implemented")),
         ]);
-        setSessions(sessionsRes.data.slice(0, 3));
-        setAppointments(appointmentsRes.data.filter(a => a.status === "scheduled").slice(0, 3));
+
+        const sessionsRes = results[0];
+        const appointmentsRes = results[1];
+
+        if (sessionsRes.status === "fulfilled") {
+          const data = Array.isArray(sessionsRes.value.data) ? sessionsRes.value.data : [];
+          setSessions(data.slice(0, 3));
+        } else {
+          setSessions([]);
+        }
+
+        if (appointmentsRes.status === "fulfilled") {
+          const data = Array.isArray(appointmentsRes.value.data) ? appointmentsRes.value.data : [];
+          setAppointments(
+            data.filter((a) => a?.status === "scheduled").slice(0, 3)
+          );
+        } else {
+          setAppointments([]);
+        }
       } catch (error) {
         console.error("Error fetching dashboard data:", error);
+        setSessions([]);
+        setAppointments([]);
       } finally {
         setLoading(false);
       }
     };
+
     fetchData();
   }, []);
 
@@ -48,33 +77,33 @@ const DashboardPage = () => {
       value: sessions.length,
       icon: MessageCircle,
       color: "text-primary",
-      bgColor: "bg-primary/10"
+      bgColor: "bg-primary/10",
     },
     {
       title: "Appointments",
       value: appointments.length,
       icon: Calendar,
       color: "text-amber-600",
-      bgColor: "bg-amber-100"
+      bgColor: "bg-amber-100",
     },
     {
       title: "Health Status",
       value: "Good",
       icon: Activity,
       color: "text-green-600",
-      bgColor: "bg-green-100"
-    }
+      bgColor: "bg-green-100",
+    },
   ];
 
   return (
     <div className="min-h-screen bg-background" data-testid="patient-dashboard">
       <Navbar />
-      
+
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
         {/* Welcome Section */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold tracking-tight">
-            Welcome back, {user?.full_name?.split(" ")[0]}
+            Welcome back, {firstName}
           </h1>
           <p className="text-muted-foreground mt-1">
             Here's an overview of your health journey
@@ -142,38 +171,46 @@ const DashboardPage = () => {
             <CardContent>
               {loading ? (
                 <div className="space-y-3">
-                  {[1, 2, 3].map(i => (
+                  {[1, 2, 3].map((i) => (
                     <div key={i} className="h-16 skeleton rounded-xl"></div>
                   ))}
                 </div>
               ) : sessions.length > 0 ? (
                 <div className="space-y-3">
-                  {sessions.map((session) => (
-                    <Link 
-                      key={session.id} 
-                      to={`/chat/${session.id}`}
-                      className="block p-4 rounded-xl border border-border/50 hover:bg-accent transition-colors"
-                      data-testid={`chat-session-${session.id}`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{session.title}</p>
-                          <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
-                            <Clock className="w-3 h-3" />
-                            {format(new Date(session.last_message_at), "MMM d, h:mm a")}
+                  {sessions.map((session) => {
+                    const id = session.id || session._id;
+                    const lastAt = session.last_message_at || session.updatedAt || session.createdAt;
+                    return (
+                      <Link
+                        key={id}
+                        to={`/chat/${id}`}
+                        className="block p-4 rounded-xl border border-border/50 hover:bg-accent transition-colors"
+                        data-testid={`chat-session-${id}`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">{session.title || "Chat session"}</p>
+                            {lastAt ? (
+                              <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+                                <Clock className="w-3 h-3" />
+                                {format(new Date(lastAt), "MMM d, h:mm a")}
+                              </div>
+                            ) : null}
                           </div>
+                          <MessageCircle className="w-5 h-5 text-muted-foreground flex-shrink-0" />
                         </div>
-                        <MessageCircle className="w-5 h-5 text-muted-foreground flex-shrink-0" />
-                      </div>
-                    </Link>
-                  ))}
+                      </Link>
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-8">
                   <MessageCircle className="w-10 h-10 text-muted-foreground/50 mx-auto mb-3" />
                   <p className="text-muted-foreground">No conversations yet</p>
                   <Link to="/chat">
-                    <Button variant="link" className="mt-2">Start your first chat</Button>
+                    <Button variant="link" className="mt-2">
+                      Start your first chat
+                    </Button>
                   </Link>
                 </div>
               )}
@@ -197,42 +234,49 @@ const DashboardPage = () => {
             <CardContent>
               {loading ? (
                 <div className="space-y-3">
-                  {[1, 2, 3].map(i => (
+                  {[1, 2, 3].map((i) => (
                     <div key={i} className="h-20 skeleton rounded-xl"></div>
                   ))}
                 </div>
               ) : appointments.length > 0 ? (
                 <div className="space-y-3">
-                  {appointments.map((appointment) => (
-                    <div 
-                      key={appointment.id} 
-                      className="p-4 rounded-xl border border-border/50"
-                      data-testid={`appointment-${appointment.id}`}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1">
-                          <p className="font-medium">{appointment.doctor_name}</p>
-                          <p className="text-sm text-muted-foreground">{appointment.doctor_specialty}</p>
-                          <div className="flex items-center gap-2 mt-2">
-                            <Badge variant="secondary" className="text-xs">
-                              <Calendar className="w-3 h-3 mr-1" />
-                              {appointment.slot}
-                            </Badge>
+                  {appointments.map((appointment) => {
+                    const id = appointment.id || appointment._id;
+                    return (
+                      <div
+                        key={id}
+                        className="p-4 rounded-xl border border-border/50"
+                        data-testid={`appointment-${id}`}
+                      >
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="flex-1">
+                            <p className="font-medium">{appointment.doctor_name || "Doctor"}</p>
+                            <p className="text-sm text-muted-foreground">
+                              {appointment.doctor_specialty || ""}
+                            </p>
+                            <div className="flex items-center gap-2 mt-2">
+                              <Badge variant="secondary" className="text-xs">
+                                <Calendar className="w-3 h-3 mr-1" />
+                                {appointment.slot || "TBD"}
+                              </Badge>
+                            </div>
                           </div>
+                          <Badge className="bg-primary/10 text-primary hover:bg-primary/10">
+                            Scheduled
+                          </Badge>
                         </div>
-                        <Badge className="bg-primary/10 text-primary hover:bg-primary/10">
-                          Scheduled
-                        </Badge>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
                 <div className="text-center py-8">
                   <Calendar className="w-10 h-10 text-muted-foreground/50 mx-auto mb-3" />
                   <p className="text-muted-foreground">No upcoming appointments</p>
                   <Link to="/doctors">
-                    <Button variant="link" className="mt-2">Book an appointment</Button>
+                    <Button variant="link" className="mt-2">
+                      Book an appointment
+                    </Button>
                   </Link>
                 </div>
               )}
@@ -249,7 +293,7 @@ const DashboardPage = () => {
             <div>
               <h4 className="font-medium mb-1">Health Tip of the Day</h4>
               <p className="text-sm text-muted-foreground">
-                Remember to stay hydrated! Drinking 8 glasses of water daily helps maintain energy levels, 
+                Remember to stay hydrated! Drinking 8 glasses of water daily helps maintain energy levels,
                 supports digestion, and keeps your skin healthy.
               </p>
             </div>
