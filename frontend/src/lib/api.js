@@ -76,9 +76,16 @@ export const authAPI = {
  */
 
 export const chatAPI = {
-  saveMessage: (data) => api.post("/chat/saveMessage", data),
+  // ✅ correct endpoint
+  sendMessage: (data) => api.post("/chat/messages", data),
+
+  // ✅ keep for older code that still calls saveMessage
+  saveMessage: (data) => api.post("/chat/messages", data),
+
+  // ✅ list messages
   getMessages: () => api.get("/chat/messages"),
 };
+
 
 
 /**
