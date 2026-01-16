@@ -2,14 +2,18 @@ const mongoose = require("mongoose");
 
 const messageSchema = new mongoose.Schema(
   {
-    sender: {
+    role: {
       type: String,
-      enum: ["user", "bot"],
+      enum: ["user", "assistant"],
       required: true,
     },
-    message: {
+    content: {
       type: String,
       required: true,
+    },
+    session_id: {
+      type: String,
+      default: null,
     },
   },
   { timestamps: true }
