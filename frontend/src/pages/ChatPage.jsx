@@ -45,6 +45,7 @@ const ChatPage = () => {
     try {
       const res = await chatAPI.getMessages();
       const data = Array.isArray(res.data) ? res.data : [];
+
       // Map backend schema { sender, message, createdAt } -> UI schema
       const mapped = data.map((m) => ({
         id: m._id || m.id,
@@ -52,6 +53,7 @@ const ChatPage = () => {
         content: m.message || "",
         timestamp: m.createdAt || m.timestamp || new Date().toISOString(),
       }));
+
       setMessages(mapped);
     } catch (error) {
       console.error("Error fetching messages:", error);
@@ -129,7 +131,7 @@ const ChatPage = () => {
   };
 
   const speakMessage = async (message) => {
-    const msgId = message.id || message._id;
+    const msgId = message.id;
 
     if (isSpeaking && playingMessageId === msgId) {
       if (audioRef.current) {
@@ -179,7 +181,6 @@ const ChatPage = () => {
     setInput("");
     setLoading(true);
 
-    // Optimistic UI message
     const tempUserMsg = {
       id: `temp-${Date.now()}`,
       role: "user",
@@ -189,24 +190,16 @@ const ChatPage = () => {
     setMessages((prev) => [...prev, tempUserMsg]);
 
     try {
-      // Save user message to MongoDB
-      await chatAPI.saveMessage({ sender: "user", message: userMessage });
+      // ✅ IMPORTANT: backend expects { message } (your updated route)
+      await chatAPI.sendMessage({ message: userMessage });
 
-      // OPTIONAL: If you don’t have AI reply endpoint yet,
-      // we’ll add a simple assistant placeholder message.
-      const assistantText =
-        "✅ Message saved. (AI reply endpoint not connected yet.)";
-
-      await chatAPI.saveMessage({ sender: "assistant", message: assistantText });
-
-      // Refresh messages from DB for consistency
+      // refresh DB messages so UI matches Mongo
       await fetchMessages();
     } catch (error) {
       console.error("Send error:", error);
       toast.error(
         error?.response?.data?.message || "Failed to send message. Please try again."
       );
-      // rollback last temp message
       setMessages((prev) => prev.filter((m) => m.id !== tempUserMsg.id));
       setInput(userMessage);
     } finally {
@@ -219,9 +212,7 @@ const ChatPage = () => {
       <Navbar />
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Chat Area */}
         <div className="flex-1 flex flex-col min-w-0">
-          {/* Messages */}
           <ScrollArea className="flex-1 p-6">
             <div className="max-w-3xl mx-auto space-y-6">
               {loadingMessages ? (
@@ -235,19 +226,22 @@ const ChatPage = () => {
                   </div>
                   <h2 className="text-xl font-semibold mb-2">How can I help you today?</h2>
                   <p className="text-muted-foreground max-w-md mx-auto">
-                    Describe your symptoms or health concerns, and I'll store them securely.
+                    Describe your symptoms and I’ll store them securely.
                   </p>
                 </div>
               ) : (
                 messages.map((message, index) => (
                   <div
                     key={message.id || index}
-                    className={`flex ${message.role === "user" ? "justify-end" : "justify-start"} animate-message-in`}
-                    data-testid={`message-${index}`}
+                    className={`flex ${
+                      message.role === "user" ? "justify-end" : "justify-start"
+                    }`}
                   >
                     <div
                       className={`max-w-[85%] ${
-                        message.role === "user" ? "chat-bubble-user" : "chat-bubble-assistant"
+                        message.role === "user"
+                          ? "chat-bubble-user"
+                          : "chat-bubble-assistant"
                       } chat-bubble`}
                     >
                       <div className="prose prose-sm max-w-none">
@@ -268,9 +262,9 @@ const ChatPage = () => {
                                   size="icon"
                                   className="h-7 w-7 opacity-70 hover:opacity-100"
                                   onClick={() => speakMessage(message)}
-                                  disabled={isSpeaking && playingMessageId !== (message.id || message._id)}
+                                  disabled={isSpeaking && playingMessageId !== message.id}
                                 >
-                                  {playingMessageId === (message.id || message._id) && isSpeaking ? (
+                                  {playingMessageId === message.id && isSpeaking ? (
                                     <Square className="w-3.5 h-3.5" />
                                   ) : (
                                     <Volume2 className="w-3.5 h-3.5" />
@@ -278,7 +272,7 @@ const ChatPage = () => {
                                 </Button>
                               </TooltipTrigger>
                               <TooltipContent>
-                                {playingMessageId === (message.id || message._id) && isSpeaking ? "Stop" : "Listen"}
+                                {playingMessageId === message.id && isSpeaking ? "Stop" : "Listen"}
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
@@ -289,25 +283,13 @@ const ChatPage = () => {
                 ))
               )}
 
-              {loading && (
-                <div className="flex justify-start">
-                  <div className="chat-bubble chat-bubble-assistant flex items-center gap-2">
-                    <span className="typing-dot w-2 h-2 bg-current rounded-full opacity-60"></span>
-                    <span className="typing-dot w-2 h-2 bg-current rounded-full opacity-60"></span>
-                    <span className="typing-dot w-2 h-2 bg-current rounded-full opacity-60"></span>
-                  </div>
-                </div>
-              )}
-
               <div ref={messagesEndRef} />
             </div>
           </ScrollArea>
 
-          {/* Input Area */}
           <div className="border-t border-border p-4 bg-background">
             <form onSubmit={handleSend} className="max-w-3xl mx-auto">
               <div className="flex items-center gap-3">
-                {/* Voice Recording Button */}
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -315,7 +297,9 @@ const ChatPage = () => {
                         type="button"
                         variant={isRecording ? "destructive" : "outline"}
                         size="icon"
-                        className={`h-12 w-12 rounded-full flex-shrink-0 ${isRecording ? "animate-pulse" : ""}`}
+                        className={`h-12 w-12 rounded-full flex-shrink-0 ${
+                          isRecording ? "animate-pulse" : ""
+                        }`}
                         onClick={toggleRecording}
                         disabled={loading || isTranscribing}
                       >
@@ -329,7 +313,11 @@ const ChatPage = () => {
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>
-                      {isTranscribing ? "Transcribing..." : isRecording ? "Stop recording" : "Start voice input"}
+                      {isTranscribing
+                        ? "Transcribing..."
+                        : isRecording
+                        ? "Stop recording"
+                        : "Start voice input"}
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -337,7 +325,9 @@ const ChatPage = () => {
                 <Input
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder={isRecording ? "Recording... Tap mic to stop" : "Describe your symptoms..."}
+                  placeholder={
+                    isRecording ? "Recording... Tap mic to stop" : "Describe your symptoms..."
+                  }
                   className="flex-1 h-12 rounded-full px-5"
                   disabled={loading || isRecording}
                 />
@@ -348,16 +338,13 @@ const ChatPage = () => {
                   className="h-12 w-12 rounded-full"
                   disabled={loading || !input.trim() || isRecording}
                 >
-                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                  {loading ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : (
+                    <Send className="w-5 h-5" />
+                  )}
                 </Button>
               </div>
-
-              {isRecording && (
-                <div className="flex items-center justify-center gap-2 mt-3 text-destructive text-sm">
-                  <span className="w-2 h-2 bg-destructive rounded-full animate-pulse"></span>
-                  Recording... Tap microphone to stop
-                </div>
-              )}
 
               <p className="text-xs text-muted-foreground text-center mt-3">
                 CareBot provides guidance only. Always consult a healthcare professional for medical advice.
