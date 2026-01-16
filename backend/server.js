@@ -5,6 +5,8 @@ const connectDB = require("./config/db");
 
 const chatRoutes = require("./routes/chatRoutes");
 const authRoutes = require("./routes/authRoutes");
+const doctorsRoutes = require("./routes/doctorsRoutes");
+const appointmentsRoutes = require("./routes/appointmentsRoutes");
 
 const app = express();
 
@@ -41,6 +43,8 @@ connectDB();
 // Routes
 app.use("/api/chat", chatRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/doctors", doctorsRoutes);
+app.use("/api/appointments", appointmentsRoutes);
 
 app.get("/", (req, res) => {
   res.send("CareBot API is running 🚀");
