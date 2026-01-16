@@ -1,14 +1,14 @@
 const express = require("express");
 const OpenAI = require("openai");
-const Message = require("../models/Message");
 const ChatSession = require("../models/ChatSession");
+const Message = require("../models/Message");
 
 const router = express.Router();
 
 
 // OpenAI client (keep key ONLY in Render env: OPENAI_API_KEY)
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+  apiKey: process.env.OPENAI_API_KEY,s
 });
 
 const SYSTEM_PROMPT =
