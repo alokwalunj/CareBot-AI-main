@@ -7,7 +7,7 @@ Unlike generic chatbots, CareBot focuses on **medical safety, structured convers
 ---
 
 ## 🚀 Live Demo
-- **Frontend (Vercel):** https://carebot-ai.vercel.app  
+- **Frontend (Vercel):** [https://carebot-ai.vercel.app](https://care-bot-ai-main.vercel.app/)  
 - **Backend (Render):** https://carebot-ai-main-1.onrender.com  
 
 ---
